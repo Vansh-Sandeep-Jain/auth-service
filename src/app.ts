@@ -21,10 +21,15 @@ app.get("/health", (req, res) => {
     .json({ status: "UP", message: "Service is running properly" });
 });
 
-console.log("app.ts", process.env.MONGODB_URI);
-
 // Routes
-app.use("/", authRoutes);
+app.use("/api/auth", authRoutes);
+
+// Root route for vercel
+app.get("/", (req, res) => {
+  res
+    .status(200)
+    .json({ status: "UP", message: "Auth service is running properly" });
+});
 
 // 404 handler - should be before other error handlers
 app.use("*", (req, res) => {
