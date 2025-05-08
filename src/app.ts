@@ -1,11 +1,60 @@
-// src/app.ts
-import express, { Request, Response } from 'express';
+import express from "express";
+import cors from "cors";
+import helmet from "helmet";
+import authRoutes from "./routes/auth.routes";
+import dotenv from "dotenv";
 
 const app = express();
 
-// Basic Hello World route
-app.get('/', (req: Request, res: Response) => {
-  res.send('Hello World');
+// Load environment variables
+dotenv.config();
+
+// Middleware
+app.use(express.json());
+app.use(cors());
+app.use(helmet());
+
+// Health check endpoint
+app.get("/health", (req, res) => {
+  res
+    .status(200)
+    .json({ status: "UP", message: "Service is running properly" });
 });
+
+console.log("app.ts", "mongodb+srv://suhaibepam:xQFQUtLkZd20JF4t@cluster0.yws0spk.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0/USERDB");
+
+// Routes
+app.use("/", authRoutes);
+
+// 404 handler - should be before other error handlers
+app.use("*", (req, res) => {
+  res.status(404).json({
+    success: false,
+    message: `Route not found: ${req.originalUrl}`,
+  });
+});
+
+// Global error handler
+app.use(
+  (
+    err: any,
+    req: express.Request,
+    res: express.Response,
+    next: express.NextFunction
+  ) => {
+    console.error("Error:", err);
+
+    const statusCode = err.statusCode || 500;
+
+    res.status(statusCode).json({
+      success: false,
+      message: err.message || "Internal server error",
+      error: {
+        name: err.name,
+        ...(process.env.NODE_ENV === "development" && { stack: err.stack }),
+      },
+    });
+  }
+);
 
 export default app;
