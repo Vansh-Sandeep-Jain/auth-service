@@ -16,9 +16,15 @@ app.use(helmet());
 
 // Health check endpoint
 app.get("/health", (req, res) => {
+  // Don't rely on DB connection for this basic health check
   res
     .status(200)
-    .json({ status: "UP", message: "Service is running properly" });
+    .json({ 
+      status: "UP", 
+      message: "Service is running properly",
+      environment: process.env.NODE_ENV || 'development',
+      timestamp: new Date().toISOString()
+    });
 });
 
 // Routes
@@ -28,7 +34,31 @@ app.use("/api/auth", authRoutes);
 app.get("/", (req, res) => {
   res
     .status(200)
-    .json({ status: "UP", message: "Auth service is running properly" });
+    .json({ 
+      status: "UP", 
+      message: "Auth service is running properly",
+      timestamp: new Date().toISOString()
+    });
+});
+
+// Diagnostic route
+app.get("/api/diagnostic", (req, res) => {
+  // Don't expose full connection string but check if it exists
+  const hasMongoDB = !!process.env.MONGODB_URI;
+  const hasDBName = !!process.env.MONGODB_DB_NAME;
+  const hasJWTSecret = !!process.env.JWT_SECRET;
+  
+  res.status(200).json({
+    environment: process.env.NODE_ENV || 'development',
+    timestamp: new Date().toISOString(),
+    config: {
+      hasMongoDB,
+      mongoDBFormat: hasMongoDB ? process.env.MONGODB_URI?.substring(0, 20) + '...' : 'missing',
+      hasDBName,
+      hasJWTSecret,
+      port: process.env.PORT || '3001 (default)'
+    }
+  });
 });
 
 // 404 handler - should be before other error handlers
