@@ -1,21 +1,36 @@
-import { Request, Response } from "express";
+// auth.controller.ts
+import { Request, Response, NextFunction } from "express";
 import { loginUser, registerUser } from "../services/auth.service";
+import sendResponse from "../utils/sendResponse";
 
-export const signup = async (req: Request, res: Response) => {
+export const signup = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const user = await registerUser(req.body);
-    res.status(201).json({ message: "User registered", user });
-  } catch (err: any) {
-    res.status(400).json({ error: err.message });
+    const result = await registerUser(req.body);
+    return res.status(201).json(
+      sendResponse({
+        success: true,
+        message: "User registered successfully",
+        data: result
+      })
+    );
+  } catch (err) {
+    next(err);
   }
 };
 
-export const login = async (req: Request, res: Response) => {
+export const login = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { email, password } = req.body;
     const data = await loginUser(email, password);
-    res.status(200).json(data);
-  } catch (err: any) {
-    res.status(401).json({ error: err.message });
+    
+    return res.status(200).json(
+      sendResponse({
+        success: true,
+        message: "Login successful",
+        data
+      })
+    );
+  } catch (err) {
+    next(err);
   }
 };

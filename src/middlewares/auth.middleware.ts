@@ -1,7 +1,6 @@
 import { Request, Response, NextFunction } from "express";
 import jwt from "jsonwebtoken";
-// import { JWT_SECRET } from "../config/constants";
-const JWT_SECRET = "epam";
+import { JWT_SECRET } from "../config/constants";
 
 interface AuthRequest extends Request {
   user?: any;

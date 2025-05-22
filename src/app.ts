@@ -3,6 +3,8 @@ import cors from "cors";
 import helmet from "helmet";
 import authRoutes from "./routes/auth.routes";
 import dotenv from "dotenv";
+import sendResponse from "./utils/sendResponse";
+import { errorHandler } from "./middlewares/error.middleware";
 
 const app = express();
 
@@ -16,45 +18,30 @@ app.use(helmet());
 
 // Health check endpoint
 app.get("/health", (req, res) => {
-  res
-    .status(200)
-    .json({ status: "UP", message: "Service is running properly" });
+  res.status(200).json(
+    sendResponse({
+      success: true,
+      message: "Service is running properly",
+      data: { status: "UP" }
+    })
+  );
 });
-
-console.log("app.ts", "mongodb+srv://suhaibepam:xQFQUtLkZd20JF4t@cluster0.yws0spk.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0/USERDB");
 
 // Routes
 app.use("/", authRoutes);
 
 // 404 handler - should be before other error handlers
 app.use("*", (req, res) => {
-  res.status(404).json({
-    success: false,
-    message: `Route not found: ${req.originalUrl}`,
-  });
+  res.status(404).json(
+    sendResponse({
+      success: false,
+      message: `Route not found: ${req.originalUrl}`,
+      error: "Not Found"
+    })
+  );
 });
 
 // Global error handler
-app.use(
-  (
-    err: any,
-    req: express.Request,
-    res: express.Response,
-    next: express.NextFunction
-  ) => {
-    console.error("Error:", err);
-
-    const statusCode = err.statusCode || 500;
-
-    res.status(statusCode).json({
-      success: false,
-      message: err.message || "Internal server error",
-      error: {
-        name: err.name,
-        ...(process.env.NODE_ENV === "development" && { stack: err.stack }),
-      },
-    });
-  }
-);
+app.use(errorHandler);
 
 export default app;

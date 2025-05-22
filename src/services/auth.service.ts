@@ -2,13 +2,16 @@ import User from "../models/user.model";
 import { hashPassword, comparePassword } from "../utils/hash.utils";
 import jwt from "jsonwebtoken";
 import { IUser } from "../types/user.types";
-// import { JWT_SECRET } from "../config/constants";
+import { JWT_SECRET } from "../config/constants";
 import CoachList from "../models/coachList.model";
-const JWT_SECRET = "epam"
+import { Conflict, NotFound, Unauthorized } from "../utils/appError";
+import ProfileImage from "../models/profileImage.model";
 
 export const registerUser = async (data: IUser) => {
   const existing = await User.findOne({ email: data.email });
-  if (existing) throw new Error("Email already in use");
+  if (existing) {
+    throw Conflict("Email already in use");
+  }
 
   const isCoach = await CoachList.findOne({ email: data.email });
 
@@ -19,24 +22,50 @@ export const registerUser = async (data: IUser) => {
     role: isCoach ? "coach" : "client",
   });
   await user.save();
-  return { message: "User registered" };
+
+  const { password: _, ...userWithoutPassword } = user.toObject();
+  return userWithoutPassword;
 };
 
 export const loginUser = async (email: string, password: string) => {
   const user = await User.findOne({ email });
   if (!user) {
-    throw new Error("User Not Found");
+    throw NotFound("User not found");
   }
 
-  if (!await comparePassword(password, user.password)) {
-    throw new Error("Invalid credentials");
+  if (!(await comparePassword(password, user.password))) {
+    throw Unauthorized("Invalid credentials");
   }
 
-  const token = jwt.sign({ userId: user._id, role: user.role }, JWT_SECRET!, {
-    expiresIn: "1d",
-  });
+  const token = jwt.sign(
+    {
+      sub: user._id,
+      role: user.role,
+      email: user.email,
+      firstName: user.firstName,
+      lastName: user.lastName,
+      preferableActivity: user.preferableActivity,
+      target: user.target
+    },
+    JWT_SECRET!,
+    {
+      expiresIn: "1d",
+    }
+  );
 
-  const { password: _, ...userWithoutPassword } = user.toObject(); // Exclude password from the user object
+  // Fetch profile image
+  let imageUrl = null;
+  try {
+    const profileImage = await ProfileImage.findOne({ userId: user._id }).lean();
+    if (profileImage && profileImage.base64encodedImage) {
+      imageUrl = profileImage.base64encodedImage;
+    }
+  } catch (error) {
+    console.error("Error fetching profile image:", error);
+  }
 
-  return { token, user: userWithoutPassword };
+  return { 
+    token, 
+    imageUrl 
+  };
 };
